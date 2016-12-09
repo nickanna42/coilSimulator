@@ -14,7 +14,7 @@ def displace(startPoint, endPoint):
     ---------
     Gives the displacement vector between two points.
     """
-    out = np.array(endPoint - startPoint0, ndmin=2, dtype=float64)
+    out = np.array(endPoint - startPoint, ndmin=2, dtype=float64)
     return out
 
 def distance(startPoint, endPoint):
@@ -74,22 +74,60 @@ def b_fromWireSegments(wireMiddle, wireL, current, evalPoint):
     out = np.sum(preOut, axis=0, ndmin=2)
     return out
 
-def circleLoop(radius, orientVector, N, I):
+def circleLoop(position, orientVector, radius, N, I):
     """
     Inputs-
 
+    position:       (1,3)np.float64          Position in meters
+    orientVector:   (1,3)np.float64          Unit vector of loop axis
     radius:              np.float64          Radius in meters
-    orientVector:   (n,3)np.float64          Unit vector of loop axis
     N:                   int                 Number of wire segments
-    I:                   np.float64          Current
+    I:                   np.float64          Current in amps
     -------------
     Return-
 
     positionVectors, lengthVectors
 
-    positionVectors:     (n,3)np.float64    center of wire 
+    positionVectors:     (n,3)np.float64    center of wire segments
     lengthVectors:       (n,3)np.float64    length vector
     ------------
-    
+
+    Creates an approximation of a single loop of current from N
+    straight wire segments.
     """
-    return
+    
+    V_x, V_y, V_z = orientVector[0]
+    phi_i = np.arctan2((V_x**2+V-y**2)**(0.5), V_z)
+    theta_i = np.arctan2(V_y, V_x)
+    cos_phi = np.cos(phi_i)
+    sin_phi = np.sin(phi_i)
+    cos_theta = np.cos(theta_i)
+    sin_theta = np.sin(theta_i)
+
+    segLength = 2*np.pi*radius/N
+    
+    A = np.arange(0, 2*np.pi, 1/N)
+    L = np.empty([N,3}, ndmin=2)
+    O = np.empty([N,3], ndmin=2)
+
+    rHat = orientVector[0]
+    phiHat = np.array([-cos_theta*cos_phi, -sin_theta*cos_phi, sin_phi])
+    thetaHat = np.array([-sin_theta, cos_theta, 0.])
+
+    C = np.empty([3,3], dtype=float64)
+    C[:,0] = rHat
+    C[:,1] = phiHat
+    C[:,2] = thetaHat
+    
+    for n in N:
+        L[n] = radius*np.array([np.cos(A[n]), np.sin(A[n]), 0.])
+        O[n] = segLength*np.array([-np.sin(A[n]), np.cos(A[n]), 0.])
+        L_temp = np.array(L[n], ndmin=2).transpose()
+        O_temp = np.array(O[n], ndmin=2).transpose()
+        L[n] = np.dot(C, L_temp)[:,0]
+        O[n] = np.dot(C, O_temp)[:,0]
+
+    L = L + position
+    O = O + position
+    return L, O
+    
