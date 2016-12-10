@@ -1,6 +1,18 @@
 """
 Original code by Nicholas Anna
 released under GPLv2
+
+list of functions in this file
+
+b_fromWireSegments
+circleLoop
+displace
+distance
+makeCircleHHC
+makeEvalPoints3D
+makeSquareHHC
+solve
+squareLoop
 """
 
 import numpy as np
@@ -193,7 +205,7 @@ def makeCircleHHC(coilCenter, coilOrientation, coilSpecs, R, I, N=10000):
     coilCenter:         (1,3np.float64     position (m)
     coilOrientation:    (1,3)np.float64    unit vector. orientation of field
 
-    coilSpec            list               coilSpec is a list containing the
+    coilSpecs            list              coilSpec is a list containing the
                                            following aggregate coil properties,
                                            in the order. wire diameter (m),
                                            # of lengthwise wraps, # of wraps
@@ -211,13 +223,16 @@ def makeCircleHHC(coilCenter, coilOrientation, coilSpecs, R, I, N=10000):
     segmentPosition    (n,3)np.float64
     segmentLength      (n,3)np.float64
     I_out              (n)np.float64
+    ----------------
+    Makes a helmholtz coil. The coil wraps are centered, coaxially and radially,
+    around the coil wrap who's center is R/2 from coilCenter and has radius R.
     """
     segmentPosition = np.array([[]], dtype="float64")
     segmentLength = np.array([[]], dtype="float64")
     I_out = np.array([], dtype="float64")
-    tempL = coilCenter + (R/2)*coilOrientation + (coilSpec[1]-1)*coilSpec[0]*coilOrientation
+    tempL = coilCenter + (R/2)*coilOrientation + (coilSpecs[1]-1)*coilSpecs[0]*coilOrientation/2
     for i in range(0,coilSpecs[1]):
-        tempR = R + (coilSpec[2]-1)*coilSpec[0]
+        tempR = R + (coilSpecs[2]-1)*coilSpecs[0]/2
         for j in range(0,coilSpecs[2]):
             temp_1, temp_2, temp_3 = circleLoop(tempL, tempR, coilOrientation, N, I)
             segmentPosition = np.append(segmentPosition, temp_1, axis=0)
@@ -229,9 +244,99 @@ def makeCircleHHC(coilCenter, coilOrientation, coilSpecs, R, I, N=10000):
             segmentLength = np.append(segmentLength, temp_2, axis=0)
             I_out = np.append(I_out, temp_3)
             
-            tempR = tempR - coilSpec[0]
-        tempL = tempL - coilOrientation*coilSpec[0]
+            tempR = tempR - coilSpecs[0]
+        tempL = tempL - coilOrientation*coilSpecs[0]
     return segmentPosition, segmentLength, I_out
 
 def makeSquareHHC(coilCenter, coilOrientation, coilSpecs, sideLength, I):
-    return
+    """
+    coilCenter:         (1,3np.float64     position (m)
+    coilOrientation:    (1,3)np.float64    unit vector. orientation of field
+
+    coilSpecs            list              coilSpec is a list containing the
+                                           following aggregate coil properties,
+                                           in the order. wire diameter (m),
+                                           # of lengthwise wraps, # of wraps
+                                           deep.
+                            
+    sideLength          np.float64         side length of coil in meters
+    I                   np.float64         current in amps
+    ----------------
+    Returns-
+    
+    segmentPosition, segmentLength, I_out
+    
+    segmentPosition    (n,3)np.float64
+    segmentLength      (n,3)np.float64
+    I_out              (n)np.float64
+    -------------
+    makes a sqaure one
+    """
+    segmentPosition = np.array([[]], dtype="float64")
+    segmentLength = np.array([[]], dtype="float64")
+    I_out = np.array([], dtype="float64")
+    tempL = coilCenter + sideLength*1.00*coilOrientation + (coilSpec[1]-1)*coilSpec[0]*coilOrientation/2
+    for i in range(0,coilSpecs[1]):
+        tempR = sideLength/2 + (coilSpec[2]-1)*coilSpec[0]/2
+        for j in range(0,coilSpecs[2]):
+            temp_1, temp_2, temp_3 = squareLoop(tempL, tempR, coilOrientation, I)
+            segmentPosition = np.append(segmentPosition, temp_1, axis=0)
+            segmentLength = np.append(segmentLength, temp_2, axis=0)
+            I_out = np.append(I_out, temp_3)
+            
+            temp_1, temp_2, temp_3 = squareLoop(-tempL, tempR, coilOrientation, I)
+            segmentPosition = np.append(segmentPosition, temp_1, axis=0)
+            segmentLength = np.append(segmentLength, temp_2, axis=0)
+            I_out = np.append(I_out, temp_3)
+            
+            tempR = tempR - coilSpecs[0]
+        tempL = tempL - coilOrientation*coilSpecs[0]
+    return segmentPosition, segmentLength, I_out
+
+def makeEvalPoints3D(postion, size_xyz, steps_xyz):
+    """
+    position:      (1,3)np.float64
+    size_xyz:      (1,3)np.float64     must be > 0
+    steps_xyz:     (1,3)np.float64     must be > 1
+    
+    ------------
+    Returns-
+    
+    pointsArray:     (n,3)np.float64
+    ------------
+    Returns an array of points, which are arranged in an orthogonal grid.
+    This grid is centered at position, is size_xyz, and goes 
+    """
+    X = size_xyz[0,0]
+    Y = size_xyz[0,1]
+    Z = size_xyz[0,2]
+    I = steps_xyz[0,0]+1
+    J = steps_xyz[0,1]+1
+    K = steps_xyz[0,2]+1
+    N = I*J*K
+    n = 0
+    pointsArray = np.empty([N,3], dtype="float64")
+    for i in range(0,I):
+        for j in range(0,J):
+            for k in range(0,K):
+                pointsArray[n] = np.array([X/2 - i*X/(I-1), Y/2 - j*Y/(J-1), Z/2 - k*Z/(K-1)])
+                n = n + 1
+    
+    return pointsArray
+
+def solve(segmentPosition, segmentLength, segmentI, evalPoints):
+    """
+    segmentPosition:    (n_1, 3)np.float64
+    segmentLength:      (n_1, 3)np.float64
+    segmentI:              (n_1)np.float64
+    evalPoints          (n_2, 3)np.float64
+    ------------
+    Returns-
+    
+    magneticFeild:      (n_2, 3)np.float64
+    """
+    points_N = len(evalPoints)
+    magneticFeild = np.zeros( [points_N, 3], dtype="float64")
+    for n in range(0, points_N):
+        magneticFeild[n] = b_fromWireSegments(segmentPosition, segmentI, np.array([evalPoints[n]]))
+    return magneticFeild
