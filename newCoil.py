@@ -4,6 +4,7 @@ released under GPLv2
 """
 
 import numpy as np
+import matplotlib.pyplot as plt
 
 def displace(startPoint, endPoint):
     """
@@ -12,7 +13,7 @@ def displace(startPoint, endPoint):
 
     returns: (n,3)np.float64
     ---------
-    Gives the displacement vector between two points.
+    Gives the displacement vector between two sets of points.
     """
     out = np.array(endPoint - startPoint, ndmin=2, dtype=float64)
     return out
@@ -30,9 +31,7 @@ def distance(startPoint, endPoint):
     a = displaceVector[:,0]**2
     b = displaceVector[:,1]**2
     c = displaceVector[:,2]**2
-    return np.float64((a + b + c)**(.5))2
-
-
+    return np.float64((a + b + c)**(.5))
 
 def b_fromWireSegments(wireMiddle, wireL, current, evalPoint):
     """
@@ -67,29 +66,31 @@ def b_fromWireSegments(wireMiddle, wireL, current, evalPoint):
     integral_f = constant * (b - a*t_f)/((b**2 - a*c)(t_f*(a*t_f - 2*b)+c)**(0.5))
     integral_i = constant * (b - a*t_i)/((b**2 - a*c)(t_i*(a*t_i - 2*b)+c)**(0.5))
     integralSolved = integral_f- integral_i
-    preOut = np.empty([N,3] dtype=float64)
+    preOut = np.empty([N,3], dtype="float64")
     preOut[:,0] = h_x*integralSolved
     preOut[:,1] = h_y*integralSolved
     preOut[:,2] = h_z*integralSolved
-    out = np.sum(preOut, axis=0, ndmin=2)
+    preOut = np.sum(preOut, axis=0)
+    out = np.array(preOut, ndmin=2)
     return out
 
-def circleLoop(position, orientVector, radius, N, I):
+def circleLoop(position, radius, orientVector, N, I):
     """
     Inputs-
 
     position:       (1,3)np.float64          Position in meters
-    orientVector:   (1,3)np.float64          Unit vector of loop axis
     radius:              np.float64          Radius in meters
+    orientVector:   (1,3)np.float64          Unit vector of loop axis
     N:                   int                 Number of wire segments
     I:                   np.float64          Current in amps
     -------------
     Return-
 
-    positionVectors, lengthVectors
+    positionVectors, lengthVectors, I_out
 
     positionVectors:     (n,3)np.float64    center of wire segments
     lengthVectors:       (n,3)np.float64    length vector
+    I_out                (n)np.float64      current in amps
     ------------
 
     Creates an approximation of a single loop of current from N
@@ -97,7 +98,7 @@ def circleLoop(position, orientVector, radius, N, I):
     """
     
     V_x, V_y, V_z = orientVector[0]
-    phi_i = np.arctan2((V_x**2+V-y**2)**(0.5), V_z)
+    phi_i = np.arctan2((V_x**2+V_y**2)**(0.5), V_z)
     theta_i = np.arctan2(V_y, V_x)
     cos_phi = np.cos(phi_i)
     sin_phi = np.sin(phi_i)
@@ -106,28 +107,131 @@ def circleLoop(position, orientVector, radius, N, I):
 
     segLength = 2*np.pi*radius/N
     
-    A = np.arange(0, 2*np.pi, 1/N)
-    L = np.empty([N,3}, ndmin=2)
-    O = np.empty([N,3], ndmin=2)
+    A = np.arange(0, 2*np.pi, 2*np.pi/N)
+    L = np.empty([N,3], dtype="float64")
+    O = np.empty([N,3], dtype="float64")
+    I_out = np.empty([N], dtype="float64")
 
     rHat = orientVector[0]
     phiHat = np.array([-cos_theta*cos_phi, -sin_theta*cos_phi, sin_phi])
     thetaHat = np.array([-sin_theta, cos_theta, 0.])
 
-    C = np.empty([3,3], dtype=float64)
+    C = np.empty([3,3], dtype="float64")
     C[:,0] = rHat
     C[:,1] = phiHat
     C[:,2] = thetaHat
-    
-    for n in N:
+
+    N_list = range(0, N)
+    for n in N_list:
         L[n] = radius*np.array([np.cos(A[n]), np.sin(A[n]), 0.])
         O[n] = segLength*np.array([-np.sin(A[n]), np.cos(A[n]), 0.])
+        I_out[n] = I
         L_temp = np.array(L[n], ndmin=2).transpose()
         O_temp = np.array(O[n], ndmin=2).transpose()
         L[n] = np.dot(C, L_temp)[:,0]
         O[n] = np.dot(C, O_temp)[:,0]
 
     L = L + position
-    O = O + position
-    return L, O
+    return L, O, I_out
+
+def squareLoop(position, sideLength, orientVector, I):
+    """
+    position:            (1,3)np.float64     Position in meters
+    sideLength:               np.float64     in meters
+    orientVector:        (1,3)np.float64     unit vector of loop axis
+    I:                        np.float64     current in amps
+    -------------
+    Return-
+
+    positionVectors, lengthVectors, I_out
+
+    positionVectors:     (4,3)np.float64    center of wire segments
+    lengthVectors:       (4,3)np.float64    length vector
+    I_out                (4)np.float64      current in amps
+    ------------
+
+    Creates a square coil of 4 wire segments
+    """
+    V_x, V_y, V_z = orientVector[0]
+    phi_i = np.arctan2((V_x**2+V_y**2)**(0.5), V_z)
+    theta_i = np.arctan2(V_y, V_x)
+    cos_phi = np.cos(phi_i)
+    sin_phi = np.sin(phi_i)
+    cos_theta = np.cos(theta_i)
+    sin_theta = np.sin(theta_i)
     
+    rHat = orientVector[0]
+    phiHat = np.array([-cos_theta*cos_phi, -sin_theta*cos_phi, sin_phi])
+    thetaHat = np.array([-sin_theta, cos_theta, 0.])
+    
+    C = np.empty([3,3], dtype="float64")
+    C[:,0] = rHat
+    C[:,1] = phiHat
+    C[:,2] = thetaHat
+    
+    A = np.arange(0, 2*np.pi, 2*np.pi/4)
+    L = np.empty([4,3], dtype="float64")
+    O = np.empty([4,3], dtype="float64")
+    I_out = np.empty([4], dtype="float64")
+    
+    N_list = range(0, 4)
+    for n in N_list:
+        L[n] = (sideLength/2)*np.array([np.cos(A[n]), np.sin(A[n]), 0.])
+        O[n] = sideLength*np.array([-np.sin(A[n]), np.cos(A[n]), 0.])
+        I_out[n] = I
+        L_temp = np.array(L[n], ndmin=2).transpose()
+        O_temp = np.array(O[n], ndmin=2).transpose()
+        L[n] = np.dot(C, L_temp)[:,0]
+        O[n] = np.dot(C, O_temp)[:,0]
+    
+    L = L + position
+    
+    return L, O, I_out
+
+def makeCircleHHC(coilCenter, coilOrientation, coilSpecs, R, I, N=10000):
+    """
+    coilCenter:         (1,3np.float64     position (m)
+    coilOrientation:    (1,3)np.float64    unit vector. orientation of field
+
+    coilSpec            list               coilSpec is a list containing the
+                                           following aggregate coil properties,
+                                           in the order. wire diameter (m),
+                                           # of lengthwise wraps, # of wraps
+                                           deep.
+                            
+    R                   np.float64         radius in meters
+    I                   np.float64         current in amps
+    N                   int                number of line segments per wrap
+                                           (default 10,000)
+    ----------------
+    Returns-
+    
+    segmentPosition, segmentLength, I_out
+    
+    segmentPosition    (n,3)np.float64
+    segmentLength      (n,3)np.float64
+    I_out              (n)np.float64
+    """
+    segmentPosition = np.array([[]], dtype="float64")
+    segmentLength = np.array([[]], dtype="float64")
+    I_out = np.array([], dtype="float64")
+    tempL = coilCenter + (R/2)*coilOrientation + (coilSpec[1]-1)*coilSpec[0]*coilOrientation
+    for i in range(0,coilSpecs[1]):
+        tempR = R + (coilSpec[2]-1)*coilSpec[0]
+        for j in range(0,coilSpecs[2]):
+            temp_1, temp_2, temp_3 = circleLoop(tempL, tempR, coilOrientation, N, I)
+            segmentPosition = np.append(segmentPosition, temp_1, axis=0)
+            segmentLength = np.append(segmentLength, temp_2, axis=0)
+            I_out = np.append(I_out, temp_3)
+            
+            temp_1, temp_2, temp_3 = circleLoop(-tempL, tempR, coilOrientation, N, I)
+            segmentPosition = np.append(segmentPosition, temp_1, axis=0)
+            segmentLength = np.append(segmentLength, temp_2, axis=0)
+            I_out = np.append(I_out, temp_3)
+            
+            tempR = tempR - coilSpec[0]
+        tempL = tempL - coilOrientation*coilSpec[0]
+    return segmentPosition, segmentLength, I_out
+
+def makeSquareHHC(coilCenter, coilOrientation, coilSpecs, sideLength, I):
+    return
