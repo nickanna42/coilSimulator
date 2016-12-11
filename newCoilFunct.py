@@ -16,7 +16,7 @@ squareLoop
 """
 
 import numpy as np
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 
 def displace(startPoint, endPoint):
     """
@@ -27,7 +27,7 @@ def displace(startPoint, endPoint):
     ---------
     Gives the displacement vector between two sets of points.
     """
-    out = np.array(endPoint - startPoint, ndmin=2, dtype=float64)
+    out = np.array(endPoint - startPoint, ndmin=2, dtype="float64")
     return out
 
 def distance(startPoint, endPoint):
@@ -75,8 +75,8 @@ def b_fromWireSegments(wireMiddle, wireL, current, evalPoint):
     b = L_x*P_x + L_y*P_y + L_z*P_z
     c = P_x**2 + P_y**2 + P_z**2
     t_i, t_f = np.float64(-0.5), np.float64(0.5)
-    integral_f = constant * (b - a*t_f)/((b**2 - a*c)(t_f*(a*t_f - 2*b)+c)**(0.5))
-    integral_i = constant * (b - a*t_i)/((b**2 - a*c)(t_i*(a*t_i - 2*b)+c)**(0.5))
+    integral_f = constant * (b - a*t_f)/((b**2 - a*c)*(t_f*(a*t_f - 2*b)+c)**(0.5))
+    integral_i = constant * (b - a*t_i)/((b**2 - a*c)*(t_i*(a*t_i - 2*b)+c)**(0.5))
     integralSolved = integral_f- integral_i
     preOut = np.empty([N,3], dtype="float64")
     preOut[:,0] = h_x*integralSolved
@@ -227,9 +227,9 @@ def makeCircleHHC(coilCenter, coilOrientation, coilSpecs, R, I, N=10000):
     Makes a helmholtz coil. The coil wraps are centered, coaxially and radially,
     around the coil wrap who's center is R/2 from coilCenter and has radius R.
     """
-    segmentPosition = np.array([[]], dtype="float64")
-    segmentLength = np.array([[]], dtype="float64")
-    I_out = np.array([], dtype="float64")
+    segmentPosition = np.array([[0,0,0]], dtype="float64")
+    segmentLength = np.array([[0,0,0]], dtype="float64")
+    I_out = np.array([0], dtype="float64")
     tempL = coilCenter + (R/2)*coilOrientation + (coilSpecs[1]-1)*coilSpecs[0]*coilOrientation/2
     for i in range(0,coilSpecs[1]):
         tempR = R + (coilSpecs[2]-1)*coilSpecs[0]/2
@@ -246,6 +246,9 @@ def makeCircleHHC(coilCenter, coilOrientation, coilSpecs, R, I, N=10000):
             
             tempR = tempR - coilSpecs[0]
         tempL = tempL - coilOrientation*coilSpecs[0]
+    segmentPosition = np.delete(segmentPosition, 0, axis=0)
+    segmentLength = np.delete(segmentLength, 0, axis=0)
+    I_out = np.delete(I_out, 0, axis=0)
     return segmentPosition, segmentLength, I_out
 
 def makeSquareHHC(coilCenter, coilOrientation, coilSpecs, sideLength, I):
@@ -272,8 +275,8 @@ def makeSquareHHC(coilCenter, coilOrientation, coilSpecs, sideLength, I):
     -------------
     makes a sqaure one
     """
-    segmentPosition = np.array([[]], dtype="float64")
-    segmentLength = np.array([[]], dtype="float64")
+    segmentPosition = np.array([[0,0,0]], dtype="float64")
+    segmentLength = np.array([[0,0,0]], dtype="float64")
     I_out = np.array([], dtype="float64")
     tempL = coilCenter + sideLength*1.00*coilOrientation + (coilSpec[1]-1)*coilSpec[0]*coilOrientation/2
     for i in range(0,coilSpecs[1]):
@@ -291,6 +294,9 @@ def makeSquareHHC(coilCenter, coilOrientation, coilSpecs, sideLength, I):
             
             tempR = tempR - coilSpecs[0]
         tempL = tempL - coilOrientation*coilSpecs[0]
+    segmentPosition = np.delete(segmentPosition, 0, axis=0)
+    segmentLength = np.delete(segmentLength, 0, axis=0)
+    I_out = np.delete(I_out, 0, axis=0)
     return segmentPosition, segmentLength, I_out
 
 def makeEvalPoints3D(postion, size_xyz, steps_xyz):
@@ -338,5 +344,5 @@ def solve(segmentPosition, segmentLength, segmentI, evalPoints):
     points_N = len(evalPoints)
     magneticFeild = np.zeros( [points_N, 3], dtype="float64")
     for n in range(0, points_N):
-        magneticFeild[n] = b_fromWireSegments(segmentPosition, segmentI, np.array([evalPoints[n]]))
+        magneticFeild[n] = b_fromWireSegments(segmentPosition, segmentLength, segmentI, np.array([evalPoints[n]]))
     return magneticFeild
