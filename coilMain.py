@@ -21,7 +21,7 @@ Helmholtz coil.
 
 import numpy as np
 import matplotlib.pyplot as plt
-import newCoilFunct as cf
+import coilFunct as cf
 from mayavi import mlab
 
 coilCenter = np.array([[0.,0.,0.]], dtype="float64")

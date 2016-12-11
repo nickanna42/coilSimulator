@@ -327,7 +327,7 @@ def makeEvalPoints3D(postion, size_xyz, steps_xyz):
             for k in range(0,K):
                 pointsArray[n] = np.array([X/2 - i*X/(I-1), Y/2 - j*Y/(J-1), Z/2 - k*Z/(K-1)])
                 n = n + 1
-    
+    pointsArray = position + pointsArray
     return pointsArray
 
 def solve(segmentPosition, segmentLength, segmentI, evalPoints):
