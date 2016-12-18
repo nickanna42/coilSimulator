@@ -299,7 +299,7 @@ def makeSquareHHC(coilCenter, coilOrientation, coilSpecs, sideLength, I):
     I_out = np.delete(I_out, 0, axis=0)
     return segmentPosition, segmentLength, I_out
 
-def makeEvalPoints3D(postion, size_xyz, steps_xyz):
+def makeEvalPoints3D(position, size_xyz, steps_xyz):
     """
     position:      (1,3)np.float64
     size_xyz:      (1,3)np.float64     must be > 0
