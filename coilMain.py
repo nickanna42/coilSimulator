@@ -1,11 +1,6 @@
 """
 Original code by Nicholas Anna
 Released under GPL v2
-----------
-Release Notes.
-
-mayavi is only available on python 2.7 as of most recent update.
-make sure to run this code on a 2.7 kernel
 
 ----------
 Magnetic Coil Simulator
@@ -20,7 +15,6 @@ Helmholtz coil.
 """
 
 import numpy as np
-import matplotlib.pyplot as plt
 import coilFunct as cf
 from mayavi import mlab
 
@@ -40,3 +34,4 @@ segmentLocation, segmentLength, segmentI = cf.makeCircleHHC(coilCenter, coilOrie
 magneticGrid = cf.solve(segmentLocation, segmentLength, segmentI, evalGrid)
 
 mlab.quiver3d(evalGrid[:,0], evalGrid[:,1], evalGrid[:,2], magneticGrid[:,0], magneticGrid[:,1], magneticGrid[:,2])
+mlab.show()
